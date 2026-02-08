@@ -22,6 +22,7 @@ import {
   Award,
   Building,
   CalendarPlus,
+  ClipboardCheck,
   LogOut,
   ChevronDown,
 } from 'lucide-react';
@@ -44,6 +45,7 @@ const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
   award: Award,
   building: Building,
   'calendar-plus': CalendarPlus,
+  'clipboard-check': ClipboardCheck,
 };
 
 interface SidebarProps {

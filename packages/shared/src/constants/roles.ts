@@ -39,6 +39,8 @@ export const ROLE_NAV_ITEMS: Record<Role, NavItem[]> = {
   manager: [
     { label: 'Dashboard', href: '/dashboard', icon: 'layout-dashboard' },
     { label: 'Team', href: '/team/roster', icon: 'users' },
+    { label: 'Depth Chart', href: '/team/depth-chart', icon: 'clipboard-check' },
+    { label: 'Lineup', href: '/team/lineup', icon: 'clipboard-list' },
     { label: 'Directory', href: '/team/directory', icon: 'building' },
     { label: 'Schedule', href: '/schedule', icon: 'calendar' },
     { label: 'Standings', href: '/standings', icon: 'bar-chart' },
@@ -47,8 +49,9 @@ export const ROLE_NAV_ITEMS: Record<Role, NavItem[]> = {
   coach: [
     { label: 'Dashboard', href: '/dashboard', icon: 'layout-dashboard' },
     { label: 'Team', href: '/team/roster', icon: 'users' },
-    { label: 'Directory', href: '/team/directory', icon: 'building' },
+    { label: 'Depth Chart', href: '/team/depth-chart', icon: 'clipboard-check' },
     { label: 'Lineup', href: '/team/lineup', icon: 'clipboard-list' },
+    { label: 'Directory', href: '/team/directory', icon: 'building' },
     { label: 'Schedule', href: '/schedule', icon: 'calendar' },
     { label: 'Score Game', href: '/games/score', icon: 'edit' },
     { label: 'Stats', href: '/stats', icon: 'bar-chart' },

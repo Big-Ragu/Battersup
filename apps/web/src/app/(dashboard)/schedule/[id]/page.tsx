@@ -1,7 +1,7 @@
 import { redirect, notFound } from 'next/navigation';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/server';
-import { ArrowLeft, MapPin, Calendar } from 'lucide-react';
+import { ArrowLeft, MapPin, Calendar, Play, Eye, ClipboardList, UserCheck } from 'lucide-react';
 import {
   GAME_STATUS_LABELS,
   GAME_STATUS_COLORS,
@@ -211,6 +211,44 @@ export default async function GameDetailPage({
           <p className="mt-1 text-sm text-gray-600">{game.notes}</p>
         </div>
       )}
+
+      {/* Scoring quick links */}
+      <div className="mt-4 flex flex-wrap gap-3">
+        <Link
+          href={`/games/${gameId}`}
+          className="inline-flex items-center gap-2 rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
+        >
+          <Play className="h-4 w-4" />
+          Game Hub
+        </Link>
+        <Link
+          href={`/games/${gameId}/live`}
+          className="inline-flex items-center gap-2 rounded-md border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+        >
+          <Eye className="h-4 w-4" />
+          Watch Live
+        </Link>
+        {canScore && (
+          <>
+            <Link
+              href={`/games/${gameId}/lineup`}
+              className="inline-flex items-center gap-2 rounded-md border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+            >
+              <ClipboardList className="h-4 w-4" />
+              Lineups
+            </Link>
+            {canManage && (
+              <Link
+                href={`/games/${gameId}/scorekeepers`}
+                className="inline-flex items-center gap-2 rounded-md border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+              >
+                <UserCheck className="h-4 w-4" />
+                Scorekeepers
+              </Link>
+            )}
+          </>
+        )}
+      </div>
 
       {/* Actions */}
       {canScore && (

@@ -115,6 +115,26 @@ export interface Game {
   updated_at: string;
 }
 
+export interface DepthChartEntry {
+  id: string;
+  team_id: string;
+  position: string;
+  player_user_id: string;
+  depth_order: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface StandardLineupEntry {
+  id: string;
+  team_id: string;
+  batting_order: number;
+  player_user_id: string;
+  fielding_position: number;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface GameWithTeams {
   game_id: string;
   league_id: string;

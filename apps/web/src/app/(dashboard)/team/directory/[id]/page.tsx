@@ -50,14 +50,15 @@ export default async function TeamDirectoryDetailPage({
   const isCoach = allRoles.some(
     (r) => r.role === 'coach' && r.team_id === teamId
   );
-  const isManager = allRoles.some(
-    (r) => r.role === 'manager' && r.league_id === team.league_id
+  // Managers can only edit their OWN team's roster, not other teams
+  const isManagerOfThisTeam = allRoles.some(
+    (r) => r.role === 'manager' && r.team_id === teamId
   );
   const isCommissioner = allRoles.some(
     (r) => r.role === 'commissioner' && r.league_id === team.league_id
   );
-  const canEdit = isCoach || isManager || isCommissioner;
-  const canManageRoster = isManager || isCommissioner;
+  const canEdit = isCoach || isManagerOfThisTeam || isCommissioner;
+  const canManageRoster = isManagerOfThisTeam || isCommissioner;
 
   // Fetch roster via RPC
   const { data: roster, error } = await supabase.rpc('get_team_roster', {

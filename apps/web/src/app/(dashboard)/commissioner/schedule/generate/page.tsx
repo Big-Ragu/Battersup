@@ -375,6 +375,24 @@ export default function GenerateSchedulePage() {
     }
 
     const result = data as any;
+
+    // Assign field to generated games via direct update (PostgREST RPC
+    // parameter passing for optional uuid fields is unreliable, so we
+    // set the field after generation as a reliable fallback).
+    if (fieldId) {
+      const { error: updateErr } = await supabase
+        .from('games')
+        .update({ field_id: fieldId })
+        .eq('league_id', leagueId)
+        .is('field_id', null);
+
+      if (updateErr) {
+        setError(`Games created but failed to assign field: ${updateErr.message}`);
+        setGenerating(false);
+        return;
+      }
+    }
+
     setSuccess(
       `Successfully created ${result.games_created} game${result.games_created !== 1 ? 's' : ''}!`
     );

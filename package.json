@@ -9,11 +9,16 @@
     "clean": "turbo clean"
   },
   "devDependencies": {
+    "pg": "^8.18.0",
     "supabase": "^2.76.3",
     "turbo": "^2"
   },
   "packageManager": "pnpm@10.29.1",
   "pnpm": {
-    "onlyBuiltDependencies": ["supabase", "sharp", "unrs-resolver"]
+    "onlyBuiltDependencies": [
+      "supabase",
+      "sharp",
+      "unrs-resolver"
+    ]
   }
 }
