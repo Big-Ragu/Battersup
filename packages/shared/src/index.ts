@@ -5,3 +5,4 @@ export * from './constants/schedule';
 export * from './constants/scoring';
 export * from './types/database';
 export * from './types/scoring';
+export * from './utils/box-score';

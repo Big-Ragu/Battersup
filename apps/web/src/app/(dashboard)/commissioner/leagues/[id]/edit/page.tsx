@@ -17,6 +17,8 @@ export default function EditLeaguePage() {
   const [description, setDescription] = useState('');
   const [seasonYear, setSeasonYear] = useState(new Date().getFullYear());
   const [status, setStatus] = useState<'draft' | 'active' | 'completed'>('draft');
+  const [allowReentry, setAllowReentry] = useState(false);
+  const [inningsPerGame, setInningsPerGame] = useState(9);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<{
@@ -45,6 +47,8 @@ export default function EditLeaguePage() {
       setDescription(leagueData.description || '');
       setSeasonYear(leagueData.season_year);
       setStatus(leagueData.status);
+      setAllowReentry(leagueData.allow_reentry ?? false);
+      setInningsPerGame(leagueData.innings_per_game ?? 9);
       setLoading(false);
     }
     loadLeague();
@@ -68,6 +72,8 @@ export default function EditLeaguePage() {
         description: description.trim() || null,
         season_year: seasonYear,
         status,
+        allow_reentry: allowReentry,
+        innings_per_game: inningsPerGame,
       })
       .eq('id', leagueId);
 
@@ -184,7 +190,7 @@ export default function EditLeaguePage() {
           />
         </div>
 
-        <div className="mb-6">
+        <div className="mb-4">
           <label
             htmlFor="status"
             className="mb-1 block text-sm font-medium text-gray-700"
@@ -203,6 +209,46 @@ export default function EditLeaguePage() {
             <option value="active">Active</option>
             <option value="completed">Completed</option>
           </select>
+        </div>
+
+        <div className="mb-4">
+          <label
+            htmlFor="inningsPerGame"
+            className="mb-1 block text-sm font-medium text-gray-700"
+          >
+            Innings per Game
+          </label>
+          <input
+            id="inningsPerGame"
+            type="number"
+            value={inningsPerGame}
+            onChange={(e) => setInningsPerGame(parseInt(e.target.value, 10) || 9)}
+            min={1}
+            max={15}
+            className="w-full rounded-md border border-gray-300 px-3 py-2 text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+          />
+          <p className="mt-1 text-xs text-gray-500">
+            Standard baseball is 9 innings. Youth leagues commonly play 6 or 7.
+          </p>
+        </div>
+
+        <div className="mb-6">
+          <label className="flex items-center gap-3 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={allowReentry}
+              onChange={(e) => setAllowReentry(e.target.checked)}
+              className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+            />
+            <div>
+              <span className="text-sm font-medium text-gray-700">
+                Allow free re-entry
+              </span>
+              <p className="text-xs text-gray-500">
+                Players can re-enter the game after being replaced (common in rec and youth leagues).
+              </p>
+            </div>
+          </label>
         </div>
 
         <div className="flex gap-3">

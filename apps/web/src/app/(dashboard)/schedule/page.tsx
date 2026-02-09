@@ -60,9 +60,36 @@ export default async function SchedulePage({
 
   if (!selectedLeagueId) redirect('/dashboard');
 
-  // Determine current month for calendar
+  // Fetch all game dates for this league to determine which months have games
+  const { data: allGameDates } = await supabase
+    .from('games')
+    .select('scheduled_at')
+    .eq('league_id', selectedLeagueId)
+    .order('scheduled_at');
+
+  // Compute distinct months that have games (sorted)
+  const gameMonthsSet = new Set<string>();
+  (allGameDates ?? []).forEach((g: any) => {
+    const d = new Date(g.scheduled_at);
+    gameMonthsSet.add(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`);
+  });
+  const gameMonths = Array.from(gameMonthsSet).sort();
+
+  // Default to monthParam, or the closest game month to today, or today's month
   const now = new Date();
-  const currentMonth = monthParam || `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+  const todayMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+  let currentMonth: string;
+  if (monthParam) {
+    currentMonth = monthParam;
+  } else if (gameMonths.length > 0) {
+    // Find closest month with games to today
+    const closest = gameMonths.reduce((best, m) =>
+      Math.abs(m.localeCompare(todayMonth)) <= Math.abs(best.localeCompare(todayMonth)) ? m : best
+    );
+    currentMonth = closest;
+  } else {
+    currentMonth = todayMonth;
+  }
   const [year, month] = currentMonth.split('-').map(Number);
 
   // Calculate date range for the month (with some padding for calendar view)
@@ -115,7 +142,7 @@ export default async function SchedulePage({
     .filter((r) => r.league_id === selectedLeagueId && r.team_id)
     .map((r) => r.team_id!);
 
-  const view = viewParam === 'calendar' ? 'calendar' : 'list';
+  const view = viewParam === 'list' ? 'list' : 'calendar';
 
   return (
     <div>
@@ -170,6 +197,7 @@ export default async function SchedulePage({
           canManage={canManage}
           userTeamIds={userTeamIds}
           view={view}
+          gameMonths={gameMonths}
         />
       )}
     </div>

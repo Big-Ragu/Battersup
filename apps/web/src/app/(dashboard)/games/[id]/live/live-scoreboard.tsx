@@ -1,13 +1,13 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import {
   PLAY_OUTCOME_LABELS,
   PLAY_OUTCOME_COLORS,
 } from '@batters-up/shared';
-import type { GameEvent, BaseRunners } from '@batters-up/shared';
-import { RefreshCw } from 'lucide-react';
+import type { GameEvent, BaseRunners, GameLineupEntry } from '@batters-up/shared';
+import { RefreshCw, Wifi, WifiOff } from 'lucide-react';
 
 interface LiveScoreboardProps {
   gameId: string;
@@ -25,8 +25,8 @@ interface LiveScoreboardProps {
       inning_half: string | null;
     };
     events: GameEvent[];
-    home_lineup: any[];
-    away_lineup: any[];
+    home_lineup: GameLineupEntry[];
+    away_lineup: GameLineupEntry[];
     scorekeepers: any[];
   };
 }
@@ -39,6 +39,7 @@ export function LiveScoreboard({
   const [events, setEvents] = useState<GameEvent[]>(initialState.events ?? []);
   const [lastRefresh, setLastRefresh] = useState(new Date());
   const [refreshing, setRefreshing] = useState(false);
+  const [realtimeConnected, setRealtimeConnected] = useState(false);
 
   const activeEvents = events.filter((e) => !e.is_deleted);
   const lastEvent = activeEvents[activeEvents.length - 1];
@@ -48,6 +49,21 @@ export function LiveScoreboard({
     : { first: null, second: null, third: null };
   const currentOuts = lastEvent ? lastEvent.outs_after : 0;
 
+  // Build player name lookup from lineups for enriching Realtime payloads
+  const playerNameMap = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const entry of [
+      ...(initialState.home_lineup ?? []),
+      ...(initialState.away_lineup ?? []),
+    ]) {
+      if (entry.player_user_id && entry.player_name) {
+        map.set(entry.player_user_id, entry.player_name);
+      }
+    }
+    return map;
+  }, [initialState.home_lineup, initialState.away_lineup]);
+
+  // Manual refresh fallback
   const fetchGameState = useCallback(async () => {
     setRefreshing(true);
     const supabase = createClient();
@@ -63,13 +79,84 @@ export function LiveScoreboard({
     setRefreshing(false);
   }, [gameId]);
 
-  // Auto-refresh every 5 seconds
+  // Supabase Realtime subscription
   useEffect(() => {
     if (game.status === 'final' || game.status === 'cancelled') return;
 
-    const interval = setInterval(fetchGameState, 5000);
-    return () => clearInterval(interval);
-  }, [fetchGameState, game.status]);
+    const supabase = createClient();
+
+    const channel = supabase
+      .channel(`live-game-${gameId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'games',
+          filter: `id=eq.${gameId}`,
+        },
+        (payload) => {
+          const row = payload.new as any;
+          setGame((prev) => ({
+            ...prev,
+            home_score: row.home_score ?? prev.home_score,
+            away_score: row.away_score ?? prev.away_score,
+            inning: row.inning ?? prev.inning,
+            inning_half: row.inning_half ?? prev.inning_half,
+            status: row.status ?? prev.status,
+          }));
+          setLastRefresh(new Date());
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'game_events',
+          filter: `game_id=eq.${gameId}`,
+        },
+        (payload) => {
+          const row = payload.new as any;
+          const enriched: GameEvent = {
+            ...row,
+            batter_name: playerNameMap.get(row.batter_user_id) ?? null,
+            pitcher_name: playerNameMap.get(row.pitcher_user_id) ?? null,
+          };
+          setEvents((prev) => {
+            // Deduplicate by ID
+            if (prev.some((e) => e.id === row.id)) return prev;
+            return [...prev, enriched];
+          });
+          setLastRefresh(new Date());
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'game_events',
+          filter: `game_id=eq.${gameId}`,
+        },
+        (payload) => {
+          const updated = payload.new as any;
+          setEvents((prev) =>
+            prev.map((e) =>
+              e.id === updated.id ? { ...e, ...updated } : e
+            )
+          );
+          setLastRefresh(new Date());
+        }
+      )
+      .subscribe((status) => {
+        setRealtimeConnected(status === 'SUBSCRIBED');
+      });
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [gameId, game.status, playerNameMap]);
 
   // Build box score — group events by inning
   const maxInning = activeEvents.reduce(
@@ -107,7 +194,7 @@ export function LiveScoreboard({
 
   return (
     <div className="mt-6 space-y-6">
-      {/* Live indicator */}
+      {/* Live indicator + connection status */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           {game.status === 'in_progress' && (
@@ -125,6 +212,15 @@ export function LiveScoreboard({
               ? 'NOT STARTED'
               : game.status.toUpperCase()}
           </span>
+          {game.status === 'in_progress' && (
+            <span className="flex items-center gap-1 text-xs text-gray-400">
+              {realtimeConnected ? (
+                <Wifi className="h-3 w-3 text-green-500" />
+              ) : (
+                <WifiOff className="h-3 w-3 text-red-400" />
+              )}
+            </span>
+          )}
         </div>
         <button
           onClick={fetchGameState}

@@ -13,7 +13,7 @@ export interface GameLineupEntry {
   team_id: string;
   player_user_id: string;
   batting_order: number;
-  fielding_position: number;
+  fielding_position: number | null;
   is_substitute: boolean;
   entered_inning: number | null;
   exited_inning: number | null;

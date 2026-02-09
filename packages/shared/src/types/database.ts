@@ -50,6 +50,8 @@ export interface League {
   description: string | null;
   season_year: number;
   status: LeagueStatus;
+  allow_reentry: boolean;
+  innings_per_game: number;
   created_by: string;
   created_at: string;
   updated_at: string;

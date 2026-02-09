@@ -40,6 +40,7 @@ interface ScheduleViewProps {
   canManage: boolean;
   userTeamIds: string[];
   view: 'list' | 'calendar';
+  gameMonths: string[];
 }
 
 function formatTime(dateStr: string): string {
@@ -78,6 +79,7 @@ export function ScheduleView({
   canManage,
   userTeamIds,
   view,
+  gameMonths,
 }: ScheduleViewProps) {
   const router = useRouter();
   const [teamFilter, setTeamFilter] = useState<string>('all');
@@ -100,19 +102,20 @@ export function ScheduleView({
     a.name.localeCompare(b.name)
   );
 
-  // Month navigation
+  // Month navigation — only months that have games
   const [year, month] = currentMonth.split('-').map(Number);
+  const currentIdx = gameMonths.indexOf(currentMonth);
+  const hasPrev = currentIdx > 0;
+  const hasNext = currentIdx < gameMonths.length - 1;
 
   function prevMonth() {
-    const d = new Date(year, month - 2, 1);
-    const m = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
-    router.push(`/schedule?league=${leagueId}&view=${view}&month=${m}`);
+    if (!hasPrev) return;
+    router.push(`/schedule?league=${leagueId}&view=${view}&month=${gameMonths[currentIdx - 1]}`);
   }
 
   function nextMonth() {
-    const d = new Date(year, month, 1);
-    const m = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
-    router.push(`/schedule?league=${leagueId}&view=${view}&month=${m}`);
+    if (!hasNext) return;
+    router.push(`/schedule?league=${leagueId}&view=${view}&month=${gameMonths[currentIdx + 1]}`);
   }
 
   const monthLabel = new Date(year, month - 1, 1).toLocaleDateString('en-US', {
@@ -166,24 +169,36 @@ export function ScheduleView({
           </select>
         )}
 
-        {/* Month navigation */}
-        <div className="ml-auto flex items-center gap-2">
-          <button
-            onClick={prevMonth}
-            className="rounded-md p-1.5 text-gray-500 hover:bg-gray-100"
-          >
-            <ChevronLeft className="h-5 w-5" />
-          </button>
-          <span className="min-w-[140px] text-center text-sm font-medium text-gray-900">
-            {monthLabel}
-          </span>
-          <button
-            onClick={nextMonth}
-            className="rounded-md p-1.5 text-gray-500 hover:bg-gray-100"
-          >
-            <ChevronRight className="h-5 w-5" />
-          </button>
-        </div>
+        {/* Month navigation — only months with games */}
+        {gameMonths.length > 0 && (
+          <div className="ml-auto flex items-center gap-2">
+            <button
+              onClick={prevMonth}
+              disabled={!hasPrev}
+              className={`rounded-md p-1.5 ${
+                hasPrev
+                  ? 'text-gray-500 hover:bg-gray-100'
+                  : 'text-gray-300 cursor-not-allowed'
+              }`}
+            >
+              <ChevronLeft className="h-5 w-5" />
+            </button>
+            <span className="min-w-[140px] text-center text-sm font-medium text-gray-900">
+              {monthLabel}
+            </span>
+            <button
+              onClick={nextMonth}
+              disabled={!hasNext}
+              className={`rounded-md p-1.5 ${
+                hasNext
+                  ? 'text-gray-500 hover:bg-gray-100'
+                  : 'text-gray-300 cursor-not-allowed'
+              }`}
+            >
+              <ChevronRight className="h-5 w-5" />
+            </button>
+          </div>
+        )}
       </div>
 
       {view === 'list' ? (

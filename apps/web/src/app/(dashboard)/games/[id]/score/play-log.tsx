@@ -85,14 +85,16 @@ export function PlayLog({ events }: PlayLogProps) {
                           {event.fielding_sequence}
                         </span>
                       )}
-                      <span
-                        className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${
-                          CONSENSUS_COLORS[event.consensus] ??
-                          'bg-gray-100 text-gray-800'
-                        }`}
-                      >
-                        {CONSENSUS_LABELS[event.consensus] ?? event.consensus}
-                      </span>
+                      {event.consensus && event.consensus !== 'pending' && (
+                        <span
+                          className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${
+                            CONSENSUS_COLORS[event.consensus] ??
+                            'bg-gray-100 text-gray-800'
+                          }`}
+                        >
+                          {CONSENSUS_LABELS[event.consensus] ?? event.consensus}
+                        </span>
+                      )}
                     </div>
                   </div>
                   {event.notes && (
