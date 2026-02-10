@@ -1,11 +1,13 @@
 'use client';
 
-import { useMemo } from 'react';
+import { useMemo, useEffect, useRef } from 'react';
+import { createClient } from '@/lib/supabase/client';
 import {
   computeTeamBattingLines,
   computeTeamPitchingLines,
   extractKeyPlays,
   buildScoringSummary,
+  buildPlayerGameStats,
   PLAY_OUTCOME_COLORS,
 } from '@batters-up/shared';
 import type {
@@ -60,6 +62,7 @@ function BattingTable({
     { key: 'rbi', label: 'RBI' },
     { key: 'bb', label: 'BB' },
     { key: 'k', label: 'K' },
+    { key: 'sb', label: 'SB' },
     { key: 'avg', label: 'AVG' },
   ];
 
@@ -294,6 +297,51 @@ export function GameSummary({ gameId, state }: GameSummaryProps) {
       buildScoringSummary(activeEvents, game.home_team_name, game.away_team_name),
     [activeEvents, game.home_team_name, game.away_team_name]
   );
+
+  // Persist computed stats to player_game_stats table for season aggregation.
+  // Runs once when viewing a final game — checks if stats already exist first.
+  const savedRef = useRef(false);
+  useEffect(() => {
+    if (game.status !== 'final' || savedRef.current || activeEvents.length === 0) return;
+    savedRef.current = true;
+
+    const supabase = createClient();
+
+    // Check if stats already saved for this game
+    supabase
+      .from('player_game_stats')
+      .select('id', { count: 'exact', head: true })
+      .eq('game_id', gameId)
+      .then(({ count, error: countError }) => {
+        if (countError) {
+          console.error('Failed to check player_game_stats:', countError);
+          // Table may not exist yet — proceed to try saving anyway
+        }
+        if (count && count > 0) return; // already saved
+
+        const stats = buildPlayerGameStats(
+          activeEvents,
+          home_lineup ?? [],
+          away_lineup ?? [],
+          game.home_team_id,
+          game.home_team_name,
+          game.away_team_id,
+          game.away_team_name,
+        );
+
+        if (stats.length === 0) return;
+
+        // Must call .then() to actually execute the RPC — supabase queries are lazy
+        supabase.rpc('save_game_stats', {
+          p_game_id: gameId,
+          p_stats: stats,
+        }).then(({ error }) => {
+          if (error) {
+            console.error('Failed to save game stats:', error);
+          }
+        });
+      });
+  }, [gameId, game.status, activeEvents, home_lineup, away_lineup, game.home_team_id, game.home_team_name, game.away_team_id, game.away_team_name]);
 
   // Line score
   const maxInning = activeEvents.reduce(

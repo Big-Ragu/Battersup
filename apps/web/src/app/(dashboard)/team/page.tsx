@@ -8,6 +8,8 @@ import {
   LineupOverviewCard,
   ScheduleOutlookCard,
   StandingsCard,
+  BattingStatsCard,
+  PitchingStatsCard,
 } from './overview-cards';
 
 export default async function TeamOverviewPage({
@@ -99,6 +101,19 @@ export default async function TeamOverviewPage({
       supabase.rpc('get_league_standings', { p_league_id: team.league_id }),
     ]);
 
+  // Season stats RPCs — wrapped in try-catch so the page still renders
+  // if the migration hasn't been run yet
+  let battingResult: { data: any } = { data: null };
+  let pitchingResult: { data: any } = { data: null };
+  try {
+    [battingResult, pitchingResult] = await Promise.all([
+      supabase.rpc('get_team_season_batting', { p_team_id: activeTeamId }),
+      supabase.rpc('get_team_season_pitching', { p_team_id: activeTeamId }),
+    ]);
+  } catch {
+    // RPCs may not exist yet — show empty cards
+  }
+
   const roster = ((rosterResult.data as any[]) ?? []).map((r: any) => ({
     roster_entry_id: r.roster_entry_id,
     player_user_id: r.player_user_id,
@@ -156,6 +171,40 @@ export default async function TeamOverviewPage({
     ties: s.ties,
     win_pct: s.win_pct,
     games_back: s.games_back,
+  }));
+
+  const battingStats = ((battingResult.data as any[]) ?? []).map((b: any) => ({
+    player_user_id: b.player_user_id,
+    player_name: b.player_name,
+    jersey_number: b.jersey_number,
+    gp: b.gp,
+    ab: b.ab,
+    r: b.r,
+    h: b.h,
+    doubles: b.doubles,
+    triples: b.triples,
+    hr: b.hr,
+    rbi: b.rbi,
+    bb: b.bb,
+    k: b.k,
+    hbp: b.hbp,
+    sac: b.sac,
+    sb: b.sb ?? 0,
+    avg: b.avg,
+  }));
+
+  const pitchingStats = ((pitchingResult.data as any[]) ?? []).map((p: any) => ({
+    player_user_id: p.player_user_id,
+    player_name: p.player_name,
+    jersey_number: p.jersey_number,
+    gp: p.gp,
+    ip_outs: p.ip_outs,
+    h: p.h,
+    r: p.r,
+    bb: p.bb,
+    k: p.k,
+    hr: p.hr,
+    hbp: p.hbp,
   }));
 
   // Build roster lookup for depth chart & lineup cards
@@ -224,6 +273,14 @@ export default async function TeamOverviewPage({
       <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-2">
         <div className="lg:col-span-2">
           <RosterOverviewCard roster={roster} />
+        </div>
+
+        <div className="lg:col-span-2">
+          <BattingStatsCard stats={battingStats} />
+        </div>
+
+        <div className="lg:col-span-2">
+          <PitchingStatsCard stats={pitchingStats} />
         </div>
 
         <DepthChartOverviewCard

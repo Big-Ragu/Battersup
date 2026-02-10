@@ -5,6 +5,8 @@ import {
   ClipboardList,
   Calendar,
   BarChart3,
+  TrendingUp,
+  Target,
 } from 'lucide-react';
 import {
   POSITIONS,
@@ -536,6 +538,179 @@ export function StandingsCard({
                   <td className="py-1.5 text-center text-gray-700">
                     {s.games_back === 0 ? '—' : s.games_back}
                   </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </OverviewCard>
+  );
+}
+
+/* ─── Season Batting Stats Card ─── */
+
+interface BattingStatRow {
+  player_user_id: string;
+  player_name: string;
+  jersey_number: number | null;
+  gp: number;
+  ab: number;
+  r: number;
+  h: number;
+  doubles: number;
+  triples: number;
+  hr: number;
+  rbi: number;
+  bb: number;
+  k: number;
+  hbp: number;
+  sac: number;
+  sb: number;
+  avg: number;
+}
+
+function formatAvg(avg: number): string {
+  const str = Number(avg).toFixed(3);
+  return str.startsWith('0') ? str.slice(1) : str;
+}
+
+export function BattingStatsCard({ stats }: { stats: BattingStatRow[] }) {
+  return (
+    <OverviewCard
+      title="Season Batting"
+      icon={TrendingUp}
+      href="/team"
+      linkLabel="Stats"
+    >
+      {stats.length === 0 ? (
+        <p className="text-sm text-gray-500 italic">
+          No batting stats recorded yet.
+        </p>
+      ) : (
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-gray-100 text-left text-xs text-gray-500">
+                <th className="pb-2 pr-3 font-medium">Player</th>
+                <th className="pb-2 pr-2 font-medium text-center">GP</th>
+                <th className="pb-2 pr-2 font-medium text-center">AB</th>
+                <th className="pb-2 pr-2 font-medium text-center">R</th>
+                <th className="pb-2 pr-2 font-medium text-center">H</th>
+                <th className="pb-2 pr-2 font-medium text-center">2B</th>
+                <th className="pb-2 pr-2 font-medium text-center">3B</th>
+                <th className="pb-2 pr-2 font-medium text-center">HR</th>
+                <th className="pb-2 pr-2 font-medium text-center">RBI</th>
+                <th className="pb-2 pr-2 font-medium text-center">BB</th>
+                <th className="pb-2 pr-2 font-medium text-center">K</th>
+                <th className="pb-2 pr-2 font-medium text-center">SB</th>
+                <th className="pb-2 font-medium text-center">AVG</th>
+              </tr>
+            </thead>
+            <tbody>
+              {stats.map((s) => (
+                <tr key={s.player_user_id} className="border-b border-gray-50">
+                  <td className="py-1.5 pr-3 font-medium text-gray-900 whitespace-nowrap">
+                    {s.player_name}
+                    {s.jersey_number != null && (
+                      <span className="ml-1 text-xs text-gray-400">
+                        #{s.jersey_number}
+                      </span>
+                    )}
+                  </td>
+                  <td className="py-1.5 pr-2 text-center text-gray-700">{s.gp}</td>
+                  <td className="py-1.5 pr-2 text-center text-gray-700">{s.ab}</td>
+                  <td className="py-1.5 pr-2 text-center text-gray-700">{s.r}</td>
+                  <td className="py-1.5 pr-2 text-center text-gray-700">{s.h}</td>
+                  <td className="py-1.5 pr-2 text-center text-gray-700">{s.doubles}</td>
+                  <td className="py-1.5 pr-2 text-center text-gray-700">{s.triples}</td>
+                  <td className="py-1.5 pr-2 text-center text-gray-700">{s.hr}</td>
+                  <td className="py-1.5 pr-2 text-center text-gray-700">{s.rbi}</td>
+                  <td className="py-1.5 pr-2 text-center text-gray-700">{s.bb}</td>
+                  <td className="py-1.5 pr-2 text-center text-gray-700">{s.k}</td>
+                  <td className="py-1.5 pr-2 text-center text-gray-700">{s.sb}</td>
+                  <td className="py-1.5 text-center font-medium text-gray-900">
+                    {formatAvg(s.avg)}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </OverviewCard>
+  );
+}
+
+/* ─── Season Pitching Stats Card ─── */
+
+interface PitchingStatRow {
+  player_user_id: string;
+  player_name: string;
+  jersey_number: number | null;
+  gp: number;
+  ip_outs: number;
+  h: number;
+  r: number;
+  bb: number;
+  k: number;
+  hr: number;
+  hbp: number;
+}
+
+function formatIP(outs: number): string {
+  const full = Math.floor(outs / 3);
+  const remainder = outs % 3;
+  return `${full}.${remainder}`;
+}
+
+export function PitchingStatsCard({ stats }: { stats: PitchingStatRow[] }) {
+  return (
+    <OverviewCard
+      title="Season Pitching"
+      icon={Target}
+      href="/team"
+      linkLabel="Stats"
+    >
+      {stats.length === 0 ? (
+        <p className="text-sm text-gray-500 italic">
+          No pitching stats recorded yet.
+        </p>
+      ) : (
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-gray-100 text-left text-xs text-gray-500">
+                <th className="pb-2 pr-3 font-medium">Player</th>
+                <th className="pb-2 pr-2 font-medium text-center">GP</th>
+                <th className="pb-2 pr-2 font-medium text-center">IP</th>
+                <th className="pb-2 pr-2 font-medium text-center">H</th>
+                <th className="pb-2 pr-2 font-medium text-center">R</th>
+                <th className="pb-2 pr-2 font-medium text-center">BB</th>
+                <th className="pb-2 pr-2 font-medium text-center">K</th>
+                <th className="pb-2 pr-2 font-medium text-center">HR</th>
+                <th className="pb-2 font-medium text-center">HBP</th>
+              </tr>
+            </thead>
+            <tbody>
+              {stats.map((s) => (
+                <tr key={s.player_user_id} className="border-b border-gray-50">
+                  <td className="py-1.5 pr-3 font-medium text-gray-900 whitespace-nowrap">
+                    {s.player_name}
+                    {s.jersey_number != null && (
+                      <span className="ml-1 text-xs text-gray-400">
+                        #{s.jersey_number}
+                      </span>
+                    )}
+                  </td>
+                  <td className="py-1.5 pr-2 text-center text-gray-700">{s.gp}</td>
+                  <td className="py-1.5 pr-2 text-center text-gray-700">{formatIP(s.ip_outs)}</td>
+                  <td className="py-1.5 pr-2 text-center text-gray-700">{s.h}</td>
+                  <td className="py-1.5 pr-2 text-center text-gray-700">{s.r}</td>
+                  <td className="py-1.5 pr-2 text-center text-gray-700">{s.bb}</td>
+                  <td className="py-1.5 pr-2 text-center text-gray-700">{s.k}</td>
+                  <td className="py-1.5 pr-2 text-center text-gray-700">{s.hr}</td>
+                  <td className="py-1.5 text-center text-gray-700">{s.hbp}</td>
                 </tr>
               ))}
             </tbody>

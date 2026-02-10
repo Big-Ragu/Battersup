@@ -53,6 +53,7 @@ export const OTHER_OUTCOMES = [
   'fielders_choice',
   'sacrifice_fly',
   'sacrifice_bunt',
+  'catcher_interference',
 ] as const;
 
 export const BASERUNNING_OUTCOMES = [
@@ -93,6 +94,8 @@ export const PLAY_OUTCOME_LABELS: Record<string, string> = {
   balk: 'Balk',
   picked_off: 'Picked Off',
   runner_advance: 'Runner Advance',
+  catcher_interference: "Catcher's Interference",
+  dropped_third_strike: 'Dropped 3rd Strike',
   other: 'Other',
 };
 
@@ -124,6 +127,8 @@ export const PLAY_OUTCOME_COLORS: Record<string, string> = {
   balk: 'bg-yellow-100 text-yellow-800',
   picked_off: 'bg-red-100 text-red-800',
   runner_advance: 'bg-blue-100 text-blue-800',
+  catcher_interference: 'bg-yellow-100 text-yellow-800',
+  dropped_third_strike: 'bg-orange-100 text-orange-800',
   other: 'bg-gray-100 text-gray-800',
 };
 
@@ -139,6 +144,8 @@ export const FIELD_ZONE_OPTIONS: Record<number, string[]> = {
     'wild_pitch',
     'pop_out',
     'error',
+    'dropped_third_strike',
+    'catcher_interference',
   ],
   3: ['groundout', 'single', 'double', 'error', 'lineout'],
   4: ['groundout', 'single', 'double', 'error', 'lineout'],

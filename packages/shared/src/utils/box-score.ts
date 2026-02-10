@@ -22,6 +22,8 @@ export interface PlayerBattingLine {
   k: number;
   hbp: number;
   sac: number;
+  sb: number;
+  cs: number;
   avg: string;
 }
 
@@ -96,6 +98,16 @@ const NON_AB_OUTCOMES = new Set([
 ]);
 
 const HIT_SET = new Set(['single', 'double', 'triple', 'home_run']);
+
+/** Outcomes where no RBI is credited even if runs score (MLB Rules 9.04) */
+const NO_RBI_OUTCOMES = new Set([
+  'double_play', 'triple_play',   // MLB 9.04(b): no RBI on GIDP
+  'error',                         // MLB 9.04(a): no RBI on error
+  'wild_pitch', 'passed_ball',     // Pitcher/catcher responsibility, not batter action
+  'balk',                          // Pitcher fault
+  'stolen_base', 'caught_stealing', 'picked_off', // Baserunning events
+  'runner_advance', 'other',       // Non-batter events
+]);
 
 const KEY_PLAY_TYPES = new Set([
   'home_run',
@@ -214,6 +226,8 @@ export function computeTeamBattingLines(
         k: 0,
         hbp: 0,
         sac: 0,
+        sb: 0,
+        cs: 0,
         avg: '.000',
       });
     }
@@ -240,6 +254,8 @@ export function computeTeamBattingLines(
         k: 0,
         hbp: 0,
         sac: 0,
+        sb: 0,
+        cs: 0,
         avg: '.000',
       };
       playerMap.set(event.batter_user_id, line);
@@ -250,12 +266,15 @@ export function computeTeamBattingLines(
     if (event.outcome === 'double') line.doubles++;
     if (event.outcome === 'triple') line.triples++;
     if (event.outcome === 'home_run') line.hr++;
-    line.rbi += event.runs_scored;
+    if (!NO_RBI_OUTCOMES.has(event.outcome)) {
+      line.rbi += event.runs_scored;
+    }
     if (event.outcome === 'walk' || event.outcome === 'intentional_walk')
       line.bb++;
     if (
       event.outcome === 'strikeout_swinging' ||
-      event.outcome === 'strikeout_looking'
+      event.outcome === 'strikeout_looking' ||
+      event.outcome === 'dropped_third_strike'
     )
       line.k++;
     if (event.outcome === 'hit_by_pitch') line.hbp++;
@@ -264,6 +283,8 @@ export function computeTeamBattingLines(
       event.outcome === 'sacrifice_bunt'
     )
       line.sac++;
+    if (event.outcome === 'stolen_base') line.sb++;
+    if (event.outcome === 'caught_stealing') line.cs++;
   }
 
   // Apply runs scored (only for players on this team)
@@ -292,7 +313,7 @@ export function computeTeamBattingLines(
   const players = [...playerMap.values()]
     .filter(
       (p) =>
-        p.ab > 0 || p.bb > 0 || p.hbp > 0 || p.sac > 0 || p.r > 0
+        p.ab > 0 || p.bb > 0 || p.hbp > 0 || p.sac > 0 || p.r > 0 || p.sb > 0
     )
     .sort(
       (a, b) =>
@@ -317,6 +338,8 @@ export function computeTeamBattingLines(
     k: players.reduce((s, p) => s + p.k, 0),
     hbp: players.reduce((s, p) => s + p.hbp, 0),
     sac: players.reduce((s, p) => s + p.sac, 0),
+    sb: players.reduce((s, p) => s + p.sb, 0),
+    cs: players.reduce((s, p) => s + p.cs, 0),
     avg: '.000',
   };
   totals.avg =
@@ -339,7 +362,7 @@ function formatIP(totalOuts: number): string {
 }
 
 /** Outcomes that count as a strikeout for the pitcher */
-const PITCHER_K_OUTCOMES = new Set(['strikeout_swinging', 'strikeout_looking']);
+const PITCHER_K_OUTCOMES = new Set(['strikeout_swinging', 'strikeout_looking', 'dropped_third_strike']);
 
 /** Outcomes that count as a walk for the pitcher */
 const PITCHER_BB_OUTCOMES = new Set(['walk', 'intentional_walk']);
@@ -597,4 +620,127 @@ export function buildScoringSummary(
         ? -1
         : 1
   );
+}
+
+// ============================================
+// Materialized per-player per-game stats
+// ============================================
+
+/** Flat stat entry for one player in one game, ready for database storage */
+export interface PlayerGameStatEntry {
+  team_id: string;
+  player_user_id: string;
+  batting_ab: number;
+  batting_r: number;
+  batting_h: number;
+  batting_2b: number;
+  batting_3b: number;
+  batting_hr: number;
+  batting_rbi: number;
+  batting_bb: number;
+  batting_k: number;
+  batting_hbp: number;
+  batting_sac: number;
+  batting_sb: number;
+  batting_cs: number;
+  pitching_ip_outs: number;
+  pitching_h: number;
+  pitching_r: number;
+  pitching_bb: number;
+  pitching_k: number;
+  pitching_hr: number;
+  pitching_hbp: number;
+}
+
+/**
+ * Build materialized stats for all players in a game.
+ * Uses the existing box-score utilities (which handle lineup fallback
+ * for pitcher attribution) to compute accurate per-player stats,
+ * then packages them for database storage.
+ */
+export function buildPlayerGameStats(
+  events: GameEvent[],
+  homeLineup: GameLineupEntry[],
+  awayLineup: GameLineupEntry[],
+  homeTeamId: string,
+  homeTeamName: string,
+  awayTeamId: string,
+  awayTeamName: string,
+): PlayerGameStatEntry[] {
+  // Compute batting lines (away bats top, home bats bottom)
+  const awayBatting = computeTeamBattingLines(
+    events, homeLineup, awayLineup, awayTeamId, awayTeamName, 'top'
+  );
+  const homeBatting = computeTeamBattingLines(
+    events, homeLineup, awayLineup, homeTeamId, homeTeamName, 'bottom'
+  );
+
+  // Compute pitching lines (away pitches bottom, home pitches top)
+  const awayPitching = computeTeamPitchingLines(
+    events, homeLineup, awayLineup, awayTeamId, awayTeamName, 'bottom'
+  );
+  const homePitching = computeTeamPitchingLines(
+    events, homeLineup, awayLineup, homeTeamId, homeTeamName, 'top'
+  );
+
+  // Merge batting + pitching into one entry per player
+  const statsMap = new Map<string, PlayerGameStatEntry>();
+
+  function getOrCreate(playerId: string, teamId: string): PlayerGameStatEntry {
+    let entry = statsMap.get(playerId);
+    if (!entry) {
+      entry = {
+        team_id: teamId,
+        player_user_id: playerId,
+        batting_ab: 0, batting_r: 0, batting_h: 0,
+        batting_2b: 0, batting_3b: 0, batting_hr: 0,
+        batting_rbi: 0, batting_bb: 0, batting_k: 0,
+        batting_hbp: 0, batting_sac: 0,
+        batting_sb: 0, batting_cs: 0,
+        pitching_ip_outs: 0, pitching_h: 0, pitching_r: 0,
+        pitching_bb: 0, pitching_k: 0, pitching_hr: 0,
+        pitching_hbp: 0,
+      };
+      statsMap.set(playerId, entry);
+    }
+    return entry;
+  }
+
+  // Apply batting stats from both teams
+  for (const box of [awayBatting, homeBatting]) {
+    for (const p of box.players) {
+      if (p.player_user_id === 'TOTALS') continue;
+      const entry = getOrCreate(p.player_user_id, box.team_id);
+      entry.batting_ab = p.ab;
+      entry.batting_r = p.r;
+      entry.batting_h = p.h;
+      entry.batting_2b = p.doubles;
+      entry.batting_3b = p.triples;
+      entry.batting_hr = p.hr;
+      entry.batting_rbi = p.rbi;
+      entry.batting_bb = p.bb;
+      entry.batting_k = p.k;
+      entry.batting_hbp = p.hbp;
+      entry.batting_sac = p.sac;
+      entry.batting_sb = p.sb;
+      entry.batting_cs = p.cs;
+    }
+  }
+
+  // Apply pitching stats from both teams
+  for (const ps of [awayPitching, homePitching]) {
+    for (const p of ps.pitchers) {
+      if (p.player_user_id === 'TOTALS') continue;
+      const entry = getOrCreate(p.player_user_id, ps.team_id);
+      entry.pitching_ip_outs = p.ip_outs;
+      entry.pitching_h = p.h;
+      entry.pitching_r = p.r;
+      entry.pitching_bb = p.bb;
+      entry.pitching_k = p.k;
+      entry.pitching_hr = p.hr;
+      entry.pitching_hbp = p.hbp;
+    }
+  }
+
+  return [...statsMap.values()];
 }

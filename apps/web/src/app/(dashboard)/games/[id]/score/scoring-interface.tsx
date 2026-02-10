@@ -435,12 +435,36 @@ export function ScoringInterface({
 
     if (outcome === 'double_play') {
       outs = Math.min(currentOuts + 2, 3);
-      // Batter is out + the specified runner (or lead runner by default)
-      runners = { ...currentRunners };
       const victim = dpVictim ?? (
-        runners.first ? 'first' : runners.second ? 'second' : 'third'
+        currentRunners.first ? 'first' : currentRunners.second ? 'second' : 'third'
       );
-      runners[victim] = null;
+      // Batter is out + victim runner is out; non-victim runners advance 1 base
+      let dpRuns = 0;
+      let newFirst: string | null = null;
+      let newSecond: string | null = null;
+      let newThird: string | null = null;
+      if (currentRunners.third && victim !== 'third') dpRuns++;
+      if (currentRunners.second && victim !== 'second') newThird = currentRunners.second;
+      if (currentRunners.first && victim !== 'first') newSecond = currentRunners.first;
+      runners = { first: newFirst, second: newSecond, third: newThird };
+      runs = dpRuns;
+    } else if (outcome === 'sacrifice_bunt') {
+      // Batter is out, all runners advance 1 base
+      outs = Math.min(currentOuts + 1, 3);
+      let sacRuns = 0;
+      let newFirst: string | null = null;
+      let newSecond: string | null = null;
+      let newThird: string | null = null;
+      if (currentRunners.third) sacRuns++;
+      if (currentRunners.second) newThird = currentRunners.second;
+      if (currentRunners.first) newSecond = currentRunners.first;
+      runners = { first: newFirst, second: newSecond, third: newThird };
+      runs = sacRuns;
+    } else if (outcome === 'dropped_third_strike' || outcome === 'catcher_interference') {
+      // Batter to 1st, forced advancement (same as walk)
+      const result = computeWalkRunners();
+      runs = result.runs;
+      runners = result.runners;
     } else if (isOut) {
       const outsToAdd = outcome === 'triple_play' ? 3 : 1;
       outs = Math.min(currentOuts + outsToAdd, 3);
